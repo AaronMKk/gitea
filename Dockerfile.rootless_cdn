@@ -1,7 +1,7 @@
 # Build stage
 FROM openeuler/openeuler:22.03 AS build-env
 
-RUN dnf -y update && dnf install -y wget make xz git && \
+RUN sed -i "s|repo.openeuler.org|mirrors.pku.edu.cn/openeuler|g" /etc/yum.repos.d/openEuler.repo && dnf -y update && dnf install -y wget make xz git && \
     dnf clean all
 
 # install go
@@ -47,6 +47,7 @@ FROM openeuler/openeuler:22.03
 
 EXPOSE 2222 3000
 
+RUN sed -i "s|repo.openeuler.org|mirrors.pku.edu.cn/openeuler|g" /etc/yum.repos.d/openEuler.repo
 RUN dnf in -y \
     bash \
     ca-certificates \
