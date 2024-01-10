@@ -1,6 +1,3 @@
-// Copyright 2019 The Gitea Authors. All rights reserved.
-// SPDX-License-Identifier: MIT
-
 package files
 
 import (
@@ -13,34 +10,17 @@ import (
 	"code.gitea.io/gitea/models"
 	repo_model "code.gitea.io/gitea/models/repo"
 	"code.gitea.io/gitea/modules/git"
-	"code.gitea.io/gitea/modules/setting"
+	"code.gitea.io/gitea/modules/lfs"
 	api "code.gitea.io/gitea/modules/structs"
+	"code.gitea.io/gitea/modules/typesniffer"
 	"code.gitea.io/gitea/modules/util"
 )
 
-// ContentType repo content type
-type ContentType string
+type checkOption func(*api.CommitContentsResponse, *git.TreeEntry) error
 
-// The string representations of different content types
-const (
-	// ContentTypeRegular regular content type (file)
-	ContentTypeRegular ContentType = "file"
-	// ContentTypeDir dir content type (dir)
-	ContentTypeDir ContentType = "dir"
-	// ContentLink link content type (symlink)
-	ContentTypeLink ContentType = "symlink"
-	// ContentTag submodule content type (submodule)
-	ContentTypeSubmodule ContentType = "submodule"
-)
-
-// String gets the string of ContentType
-func (ct *ContentType) String() string {
-	return string(*ct)
-}
-
-// GetContentsOrList gets the meta data of a file's contents (*ContentsResponse) if treePath not a tree
+// GetCommitContentsOrList gets the meta data of a file's contents (*ContentsResponse) if treePath not a tree
 // directory, otherwise a listing of file contents ([]*ContentsResponse). Ref can be a branch, commit or tag
-func GetContentsOrList(ctx context.Context, repo *repo_model.Repository, treePath, ref string) (any, error) {
+func GetCommitContentsOrList(ctx context.Context, repo *repo_model.Repository, treePath, ref string) (any, error) {
 	if repo.IsEmpty {
 		return make([]any, 0), nil
 	}
@@ -76,11 +56,11 @@ func GetContentsOrList(ctx context.Context, repo *repo_model.Repository, treePat
 	}
 
 	if entry.Type() != "tree" {
-		return GetContents(ctx, repo, treePath, origRef, false)
+		return GetCommitContents(ctx, repo, treePath, origRef, false, checkIsNonText)
 	}
 
 	// We are in a directory, so we return a list of FileContentResponse objects
-	var fileList []*api.ContentsResponse
+	var fileList []*api.CommitContentsResponse
 
 	gitTree, err := commit.SubTree(treePath)
 	if err != nil {
@@ -92,7 +72,7 @@ func GetContentsOrList(ctx context.Context, repo *repo_model.Repository, treePat
 	}
 	for _, e := range entries {
 		subTreePath := path.Join(treePath, e.Name())
-		fileContentResponse, err := GetContents(ctx, repo, subTreePath, origRef, true)
+		fileContentResponse, err := GetCommitContents(ctx, repo, subTreePath, origRef, true)
 		if err != nil {
 			return nil, err
 		}
@@ -101,24 +81,15 @@ func GetContentsOrList(ctx context.Context, repo *repo_model.Repository, treePat
 	return fileList, nil
 }
 
-// GetObjectTypeFromTreeEntry check what content is behind it
-func GetObjectTypeFromTreeEntry(entry *git.TreeEntry) ContentType {
-	switch {
-	case entry.IsDir():
-		return ContentTypeDir
-	case entry.IsSubModule():
-		return ContentTypeSubmodule
-	case entry.IsExecutable(), entry.IsRegular():
-		return ContentTypeRegular
-	case entry.IsLink():
-		return ContentTypeLink
-	default:
-		return ""
-	}
-}
-
-// GetContents gets the meta data on a file's contents. Ref can be a branch, commit or tag
-func GetContents(ctx context.Context, repo *repo_model.Repository, treePath, ref string, forList bool) (*api.ContentsResponse, error) {
+// GetCommitContents gets the meta data on a directory's or a file's contents. Ref can be a branch, commit or tag
+func GetCommitContents(
+	ctx context.Context,
+	repo *repo_model.Repository,
+	treePath,
+	ref string,
+	forList bool,
+	options ...checkOption,
+) (*api.CommitContentsResponse, error) {
 	if ref == "" {
 		ref = repo.DefaultBranch
 	}
@@ -176,16 +147,29 @@ func GetContents(ctx context.Context, repo *repo_model.Repository, treePath, ref
 	}
 
 	// All content types have these fields in populated
-	contentsResponse := &api.ContentsResponse{
-		Name:          entry.Name(),
-		Path:          treePath,
-		SHA:           entry.ID.String(),
-		LastCommitSHA: lastCommit.ID.String(),
-		Size:          entry.Size(),
-		URL:           &selfURLString,
+	contentsResponse := &api.CommitContentsResponse{
+		Name:              entry.Name(),
+		Path:              treePath,
+		SHA:               entry.ID.String(),
+		LastCommitSHA:     lastCommit.ID.String(),
+		LastCommitMessage: lastCommit.CommitMessage,
+		LastCommitCreate:  lastCommit.Committer.When,
+		Size:              entry.Size(),
+		URL:               &selfURLString,
 		Links: &api.FileLinksResponse{
 			Self: &selfURLString,
 		},
+	}
+
+	for _, option := range options {
+		if err = option(contentsResponse, entry); err != nil {
+			return nil, err
+		}
+	}
+
+	if p, b := isLFS(entry); b {
+		contentsResponse.Size = p.Size
+		contentsResponse.IsLFS = true
 	}
 
 	// Now populate the rest of the ContentsResponse based on entry type
@@ -248,24 +232,51 @@ func GetContents(ctx context.Context, repo *repo_model.Repository, treePath, ref
 	return contentsResponse, nil
 }
 
-// GetBlobBySHA get the GitBlobResponse of a repository using a sha hash.
-func GetBlobBySHA(ctx context.Context, repo *repo_model.Repository, gitRepo *git.Repository, sha string) (*api.GitBlobResponse, error) {
-	gitBlob, err := gitRepo.GetBlob(sha)
+func checkIsNonText(response *api.CommitContentsResponse, entry *git.TreeEntry) error {
+	isNonText, err := isNonText(entry)
+
 	if err != nil {
-		return nil, err
+		return err
 	}
-	content := ""
-	if gitBlob.Size() <= setting.API.DefaultMaxBlobSize {
-		content, err = gitBlob.GetBlobContentBase64()
-		if err != nil {
-			return nil, err
-		}
+
+	response.IsNonText = &isNonText
+
+	return nil
+}
+
+func isLFS(entry *git.TreeEntry) (lfs.Pointer, bool) {
+	if !entry.IsRegular() || entry.Size() > 512 {
+		return lfs.Pointer{}, false
 	}
-	return &api.GitBlobResponse{
-		SHA:      gitBlob.ID.String(),
-		URL:      repo.APIURL() + "/git/blobs/" + url.PathEscape(gitBlob.ID.String()),
-		Size:     gitBlob.Size(),
-		Encoding: "base64",
-		Content:  content,
-	}, nil
+
+	reader, err := entry.Blob().DataAsync()
+	if err != nil {
+		return lfs.Pointer{}, false
+	}
+	defer reader.Close()
+
+	p, err := lfs.ReadPointer(reader)
+
+	return p, err == nil
+}
+
+func isNonText(entry *git.TreeEntry) (bool, error) {
+	if !entry.IsRegular() {
+		return false, nil
+	}
+
+	dataRc, err := entry.Blob().DataAsync()
+	if err != nil {
+		return false, err
+	}
+
+	defer dataRc.Close()
+
+	buf := make([]byte, 1024)
+	n, _ := util.ReadAtMost(dataRc, buf)
+	buf = buf[:n]
+
+	st := typesniffer.DetectContentType(buf)
+
+	return !st.IsText(), nil
 }
