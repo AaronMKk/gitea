@@ -5,6 +5,10 @@
 package user
 
 import (
+	"github.com/gin-gonic/gin"
+	"github.com/opensourceways/xihe-server/app"
+	"github.com/opensourceways/xihe-server/domain/authing"
+	userlogincli "github.com/opensourceways/xihe-server/user/infrastructure/logincli"
 	"net/http"
 
 	activities_model "code.gitea.io/gitea/models/activities"
@@ -12,7 +16,25 @@ import (
 	"code.gitea.io/gitea/modules/context"
 	"code.gitea.io/gitea/routers/api/v1/utils"
 	"code.gitea.io/gitea/services/convert"
+
+	userapp "github.com/opensourceways/xihe-server/user/app"
+	userrepo "github.com/opensourceways/xihe-server/user/domain/repository"
 )
+
+const (
+	errorBadRequestBody   = "bad_request_body"
+	errorBadRequestHeader = "bad_request_header"
+)
+
+type UserController struct {
+	baseController
+
+	repo     userrepo.User
+	auth     authing.User
+	s        userapp.UserService
+	email    userapp.EmailService
+	register userapp.RegService
+}
 
 // Search search users
 func Search(ctx *context.APIContext) {
@@ -215,4 +237,147 @@ func ListUserActivityFeeds(ctx *context.APIContext) {
 	ctx.SetTotalCountHeader(count)
 
 	ctx.JSON(http.StatusOK, convert.ToActivities(ctx, feeds, ctx.Doer))
+}
+
+func (ctl baseController) checkUserApiToken(
+	ctx *gin.Context, allowVistor bool,
+) (
+	pl oldUserTokenPayload, visitor bool, ok bool,
+) {
+	return ctl.checkUserApiTokenBase(ctx, allowVistor, true)
+}
+
+// @Summary		SendBindEmail
+// @Description	send code to user
+// @Tags			User
+// @Accept			json
+// @Success		201	{object}			app.UserDTO
+// @Failure		500	system_error		system	error
+// @Failure		500	duplicate_creating	create	user	repeatedly
+// @Router			/v1/user/email/sendbind [post]
+func (ctl *UserController) SendBindEmail(ctx *gin.Context) {
+	pl, _, ok := ctl.checkUserApiToken(ctx, false)
+	if !ok {
+		return
+	}
+
+	prepareOperateLog(ctx, pl.Account, OPERATE_TYPE_USER, "send code to user")
+
+	req := EmailSend{}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, newResponseCodeMsg(
+			errorBadRequestBody,
+			"can't fetch request body",
+		))
+
+		return
+	}
+
+	cmd, err := req.toCmd(pl.DomainAccount())
+	if err != nil {
+		ctl.sendBadRequestBody(ctx)
+
+		return
+	}
+
+	if code, err := ctl.email.SendBindEmail(&cmd); err != nil {
+		ctl.sendCodeMessage(ctx, code, err)
+	} else {
+		ctl.sendRespOfPost(ctx, "success")
+	}
+}
+
+// @Summary		BindEmail
+// @Description	bind email according the code
+// @Tags			User
+// @Param			body	body	userCreateRequest	true	"body of creating user"
+// @Accept			json
+// @Success		201	{object}			app.UserDTO
+// @Failure		400	bad_request_body	can't	parse		request	body
+// @Failure		400	bad_request_param	some	parameter	of		body	is	invalid
+// @Failure		500	system_error		system	error
+// @Failure		500	duplicate_creating	create	user	repeatedly
+// @Router			/v1/user/email/bind [post]
+func (ctl *UserController) BindEmail(ctx *gin.Context) {
+	pl, _, ok := ctl.checkUserApiToken(ctx, false)
+	if !ok {
+		return
+	}
+
+	prepareOperateLog(ctx, pl.Account, OPERATE_TYPE_USER, "bind email according to the code")
+
+	req := EmailCode{}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, newResponseCodeMsg(
+			errorBadRequestBody,
+			"can't fetch request body",
+		))
+
+		return
+	}
+
+	cmd, err := req.toCmd(pl.DomainAccount())
+	if err != nil {
+		ctl.sendBadRequestBody(ctx)
+
+		return
+	}
+
+	// create new token
+	f := func() (token, csrftoken string) {
+		user, err := ctl.s.GetByAccount(pl.DomainAccount())
+		if err != nil {
+			return
+		}
+
+		payload := oldUserTokenPayload{
+			Account:                 user.Account,
+			Email:                   user.Email,
+			PlatformToken:           user.Platform.Token,
+			PlatformUserNamespaceId: user.Platform.NamespaceId,
+		}
+
+		token, csrftoken, err = ctl.newApiToken(ctx, payload)
+		if err != nil {
+			return
+		}
+
+		return
+	}
+
+	if code, err := ctl.email.VerifyBindEmail(&cmd); err != nil {
+		ctl.sendCodeMessage(ctx, code, err)
+	} else {
+		token, csrftoken := f()
+		if token != "" {
+			ctl.setRespToken(ctx, token, csrftoken, pl.Account)
+		}
+
+		ctl.sendRespOfPost(ctx, "success")
+	}
+}
+
+func AddRouterForUserController(
+	rg *gin.RouterGroup,
+	us userapp.UserService,
+	repo userrepo.User,
+	auth authing.User,
+	login app.LoginService,
+	register userapp.RegService,
+) {
+	ctl := UserController{
+		auth: auth,
+		repo: repo,
+		s:    us,
+		email: userapp.NewEmailService(
+			auth, userlogincli.NewLoginCli(login),
+			us,
+		),
+		register: register,
+	}
+
+	// email
+	rg.GET("/v1/user/check_email", checkUserEmailMiddleware(&ctl.baseController))
+	rg.POST("/v1/user/email/sendbind", ctl.SendBindEmail)
+	rg.POST("/v1/user/email/bind", ctl.BindEmail)
 }

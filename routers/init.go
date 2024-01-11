@@ -176,7 +176,6 @@ func NormalRoutes() *web.Route {
 	r.Mount("/", web_routers.Routes())
 	r.Mount("/api/v1", apiv1.Routes())
 	r.Mount("/api/internal", private.Routes())
-
 	r.Post("/-/fetch-redirect", common.FetchRedirectDelegate)
 
 	if setting.Packages.Enabled {
