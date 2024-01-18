@@ -207,6 +207,9 @@ func serveInstalled(ctx *cli.Context) error {
 		}
 	}
 
+	// init redis and kafka
+	routers.InitMessageQueue()
+
 	// Set up Chi routes
 	webRoutes := routers.NormalRoutes()
 	err := listen(webRoutes, true)

@@ -34,6 +34,7 @@ import (
 	repo_service "code.gitea.io/gitea/services/repository"
 
 	"github.com/go-chi/cors"
+	"github.com/sirupsen/logrus"
 )
 
 func HTTPGitEnabledHandler(ctx *context.Context) {
@@ -490,6 +491,9 @@ func serviceRPC(h *serviceHandler, service string) {
 
 // ServiceUploadPack implements Git Smart HTTP protocol
 func ServiceUploadPack(ctx *context.Context) {
+	logrus.Warnf("ServiceUploadPack start...")
+	fmt.Printf("ctx: %+v\n", ctx)
+
 	h := httpBase(ctx)
 	if h != nil {
 		serviceRPC(h, "upload-pack")

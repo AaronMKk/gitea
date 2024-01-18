@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"runtime"
 
+	"code.gitea.io/gitea/event/infrastructure/kafka"
 	"code.gitea.io/gitea/models"
 	asymkey_model "code.gitea.io/gitea/models/asymkey"
 	authmodel "code.gitea.io/gitea/models/auth"
@@ -50,6 +51,8 @@ import (
 	"code.gitea.io/gitea/services/task"
 	"code.gitea.io/gitea/services/uinotification"
 	"code.gitea.io/gitea/services/webhook"
+
+	"github.com/sirupsen/logrus"
 )
 
 func mustInit(fn func() error) {
@@ -165,6 +168,19 @@ func InitWebInstalled(ctx context.Context) {
 
 	// Finally start up the cron
 	cron.NewContext(ctx)
+}
+
+// in order to send statistic data, init redis and kafka
+// TODO: exit redis and kafka
+func InitMessageQueue() {
+	log := logrus.NewEntry(logrus.StandardLogger())
+
+	kafkacfg := kafka.SetDefault()
+	if err := kafka.Init(&kafkacfg, log, nil); err != nil {
+		logrus.Errorf("internal error occurred, kafka init err: %s", err.Error())
+	} else {
+		logrus.Info("init kafka success!")
+	}
 }
 
 // NormalRoutes represents non install routes
