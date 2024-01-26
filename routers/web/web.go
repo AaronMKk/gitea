@@ -53,6 +53,8 @@ import (
 	chi_middleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus"
+
+	stat_middleware "code.gitea.io/gitea/routers/web/middleware"
 )
 
 const (
@@ -1421,7 +1423,7 @@ func registerRoutes(m *web.Route) {
 		}, repo.MustAllowPulls)
 
 		m.Group("/media", func() {
-			m.Get("/branch/*", context.RepoRefByType(context.RepoRefBranch), repo.SingleDownloadOrLFS)
+			m.Get("/branch/*", context.RepoRefByType(context.RepoRefBranch), stat_middleware.WebDownloadMiddleware, repo.SingleDownloadOrLFS)
 			m.Get("/tag/*", context.RepoRefByType(context.RepoRefTag), repo.SingleDownloadOrLFS)
 			m.Get("/commit/*", context.RepoRefByType(context.RepoRefCommit), repo.SingleDownloadOrLFS)
 			m.Get("/blob/{sha}", context.RepoRefByType(context.RepoRefBlob), repo.DownloadByIDOrLFS)

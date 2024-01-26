@@ -6,10 +6,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// middleware for send statistics message about git clone
+// GitCloneMessageMiddleware middleware for send statistics message about git clone
 func GitCloneMessageMiddleware(ctx *context.Context) {
 	logrus.Warnf("GitCloneMessageMiddleware Start...")
 	if err := event.GitCloneSender(ctx); err != nil {
+		logrus.Errorf("internal error of kafka sender: %s", err.Error())
+	}
+}
+
+// WebDownloadMiddleware middleware for send statistics message about git clone
+func WebDownloadMiddleware(ctx *context.Context) {
+	logrus.Warnf("WebDownloadSender Start...")
+	if err := event.WebDownloadSender(ctx); err != nil {
 		logrus.Errorf("internal error of kafka sender: %s", err.Error())
 	}
 }
