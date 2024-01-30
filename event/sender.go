@@ -1,13 +1,13 @@
 package event
 
 import (
-	"code.gitea.io/gitea/event/infrastructure/kafka"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"strconv"
 	"time"
 
+	"code.gitea.io/gitea/event/infrastructure/kafka"
 	"code.gitea.io/gitea/modules/context"
-	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 )
 
 // Constants for topics, types, and field names.
@@ -61,7 +61,7 @@ func prepareMessage(ctx *context.Context, messageType string, description string
 		RequestProto:  ctx.Req.Proto,
 		RequestIP:     ctx.Req.RemoteAddr,
 		RequestAgent:  ctx.Req.UserAgent(),
-		RepoUserEmail: ctx.ContextUser.Email,
+		RepoUserEmail: ctx.Repo.Repository.Owner.Email,
 		RequestPath:   ctx.Repo.RepoLink,
 		RequestID:     requestUuid,
 	}
