@@ -22,18 +22,14 @@ const (
 	KafkaMessageType MessageType = "kafka"
 )
 
-var messageTypes = []MessageType{
-	KafkaMessageType,
-}
-
 var messageMap = map[MessageType]NewMessageFunc{}
 
-// RegisterStorageType registers a provided storage type with a function to create it
+// RegisterMessageType registers a provided storage type with a function to create it
 func RegisterMessageType(typ MessageType, fn func(cfg MQConfig) error) {
 	messageMap[typ] = fn
 }
 
-// Init init the message queen, (ex: ActiveMQ、RocketMQ、RabbitMQ、Kafka)
+// Init the message queen, (ex: ActiveMQ、RocketMQ、RabbitMQ、Kafka)
 func Init() (err error) {
 	log.Info("Initialising message queen with type: %s", setting.MQ.MessageType)
 	err = NewMessage(MessageType(setting.MQ.MessageType), setting.MQ)
