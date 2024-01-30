@@ -1,10 +1,11 @@
 package event
 
 import (
-	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 
 	"code.gitea.io/gitea/event/infrastructure/kafka"
 	"code.gitea.io/gitea/modules/context"
