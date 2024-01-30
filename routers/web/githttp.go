@@ -4,12 +4,12 @@
 package web
 
 import (
-	"code.gitea.io/gitea/routers/web/middleware"
 	"net/http"
 
 	"code.gitea.io/gitea/modules/context"
 	"code.gitea.io/gitea/modules/setting"
 	"code.gitea.io/gitea/modules/web"
+	"code.gitea.io/gitea/routers/web/middleware"
 	"code.gitea.io/gitea/routers/web/repo"
 	context_service "code.gitea.io/gitea/services/context"
 )
