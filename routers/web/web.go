@@ -5,6 +5,7 @@ package web
 
 import (
 	gocontext "context"
+	chi_middleware "github.com/go-chi/chi/v5/middleware"
 	"net/http"
 	"strings"
 
@@ -32,6 +33,7 @@ import (
 	"code.gitea.io/gitea/routers/web/explore"
 	"code.gitea.io/gitea/routers/web/feed"
 	"code.gitea.io/gitea/routers/web/healthcheck"
+	stat_middleware "code.gitea.io/gitea/routers/web/middleware"
 	"code.gitea.io/gitea/routers/web/misc"
 	"code.gitea.io/gitea/routers/web/org"
 	org_setting "code.gitea.io/gitea/routers/web/org/setting"
@@ -50,7 +52,6 @@ import (
 
 	"gitea.com/go-chi/captcha"
 	"github.com/NYTimes/gziphandler"
-	chi_middleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -1421,7 +1422,7 @@ func registerRoutes(m *web.Route) {
 		}, repo.MustAllowPulls)
 
 		m.Group("/media", func() {
-			m.Get("/branch/*", context.RepoRefByType(context.RepoRefBranch), repo.SingleDownloadOrLFS)
+			m.Get("/branch/*", context.RepoRefByType(context.RepoRefBranch), stat_middleware.WebDownloadMiddleware, repo.SingleDownloadOrLFS)
 			m.Get("/tag/*", context.RepoRefByType(context.RepoRefTag), repo.SingleDownloadOrLFS)
 			m.Get("/commit/*", context.RepoRefByType(context.RepoRefCommit), repo.SingleDownloadOrLFS)
 			m.Get("/blob/{sha}", context.RepoRefByType(context.RepoRefBlob), repo.DownloadByIDOrLFS)
