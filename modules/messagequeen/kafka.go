@@ -3,19 +3,17 @@ package messagequeen
 import (
 	"github.com/sirupsen/logrus"
 
-	"code.gitea.io/gitea/modules/log"
 	kfklib "github.com/opensourceways/kafka-lib/agent"
+
+	"code.gitea.io/gitea/modules/log"
+	"code.gitea.io/gitea/modules/setting"
 )
 
 const (
 	queueName = "gitea-kafka-queue"
 )
 
-type Config struct {
-	kfklib.Config
-}
-
-func retriveConfig(cfg MQConfig) Config {
+func retriveConfig(cfg setting.MQConfig) kfklib.Config {
 	kafkaAddr := cfg.ServerAddr
 	kafkaVer := cfg.ServerVersion
 
@@ -25,18 +23,16 @@ func retriveConfig(cfg MQConfig) Config {
 			"It's crucial to set this to avoid protocol version mismatches and ensure backward compatibility.")
 	}
 
-	return Config{
-		kfklib.Config{
-			Address:        kafkaAddr,
-			Version:        kafkaVer,
-			SkipCertVerify: true,
-		},
+	return kfklib.Config{
+		Address:        kafkaAddr,
+		Version:        kafkaVer,
+		SkipCertVerify: true,
 	}
 }
 
 // newKafkaMessageQueue sets up a new Kafka message queue
-func newKafkaMessageQueue(cfg MQConfig) error {
+func newKafkaMessageQueue(cfg setting.MQConfig) error {
 	var localConfig = retriveConfig(cfg)
 	mqLog := logrus.NewEntry(logrus.StandardLogger())
-	return kfklib.Init(&localConfig.Config, mqLog, nil, queueName, true)
+	return kfklib.Init(&localConfig, mqLog, nil, queueName, true)
 }

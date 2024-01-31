@@ -6,11 +6,11 @@ import (
 
 // MQConfig represents the configuration for a message queue
 type MQConfig struct {
-	MessageType   string `ini:"MESSAGE_TYPE" json:",omitempty"`
-	ServerAddr    string `ini:"SERVER_ADDR" json:",omitempty"`
-	ServerVersion string `ini:"SERVER_VERSION" json:",omitempty"`
 	SslPath       string `ini:"SSL_PATH" json:",omitempty"`
 	TopicName     string `ini:"TOPIC_NAME" json:",omitempty"`
+	ServerAddr    string `ini:"SERVER_ADDR" json:",omitempty"`
+	MessageType   string `ini:"MESSAGE_TYPE" json:",omitempty"`
+	ServerVersion string `ini:"SERVER_VERSION" json:",omitempty"`
 }
 
 // MQ represents the configuration of the message queue

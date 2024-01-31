@@ -7,15 +7,14 @@ import (
 	"github.com/google/uuid"
 
 	"code.gitea.io/gitea/modules/context"
-	"code.gitea.io/gitea/modules/log"
 	"code.gitea.io/gitea/modules/messagequeen/infrastructure/kafka"
 	"code.gitea.io/gitea/modules/setting"
 )
 
 // Constants for topics, types, and field names.
 const (
-	typGitClone    = "gitClone"
-	typWebDownload = "webDownload"
+	gitClone    = "git_clone"
+	webDownload = "web_download"
 )
 
 type msgDetail struct {
@@ -78,14 +77,12 @@ func prepareMessage(ctx *context.Context, messageType string, description string
 
 // GitCloneSender handles sending Git clone events to Kafka.
 func GitCloneSender(ctx *context.Context) error {
-	msg := prepareMessage(ctx, typGitClone, "this message means someone cloned the repository")
-	log.Info("Publishing Git clone message: %#v\n", msg)
+	msg := prepareMessage(ctx, gitClone, "this message means someone cloned the repository")
 	return kafka.Publish(setting.MQ.TopicName, &msg, nil)
 }
 
 // WebDownloadSender handles sending Web download events to Kafka.
 func WebDownloadSender(ctx *context.Context) error {
-	msg := prepareMessage(ctx, typWebDownload, "this message means someone downloaded a file from the website")
-	log.Info("Publishing Web download message: %#v\n", msg)
+	msg := prepareMessage(ctx, webDownload, "this message means someone downloaded a file from the website")
 	return kafka.Publish(setting.MQ.TopicName, &msg, nil)
 }
