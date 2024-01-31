@@ -1,4 +1,4 @@
-package messagequeen
+package messagequeue
 
 import (
 	"github.com/sirupsen/logrus"

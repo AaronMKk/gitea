@@ -1,4 +1,4 @@
-package messagequeen
+package messagequeue
 
 import (
 	"strconv"
@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"code.gitea.io/gitea/modules/context"
-	"code.gitea.io/gitea/modules/messagequeen/infrastructure/kafka"
+	"code.gitea.io/gitea/modules/messagequeue/infrastructure/kafka"
 	"code.gitea.io/gitea/modules/setting"
 )
 
