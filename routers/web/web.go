@@ -4,6 +4,7 @@
 package web
 
 import (
+	stat_middleware "code.gitea.io/gitea/routers/web/statmiddleware"
 	gocontext "context"
 	"net/http"
 	"strings"
@@ -32,7 +33,6 @@ import (
 	"code.gitea.io/gitea/routers/web/explore"
 	"code.gitea.io/gitea/routers/web/feed"
 	"code.gitea.io/gitea/routers/web/healthcheck"
-	stat_middleware "code.gitea.io/gitea/routers/web/middleware"
 	"code.gitea.io/gitea/routers/web/misc"
 	"code.gitea.io/gitea/routers/web/org"
 	org_setting "code.gitea.io/gitea/routers/web/org/setting"

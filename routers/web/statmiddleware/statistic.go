@@ -1,4 +1,4 @@
-package middleware
+package statmiddleware
 
 import (
 	"code.gitea.io/gitea/modules/context"
