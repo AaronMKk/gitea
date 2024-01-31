@@ -1,4 +1,4 @@
-package messagequeen
+package messagequeue
 
 import (
 	"code.gitea.io/gitea/modules/log"
