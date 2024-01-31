@@ -1,24 +1,24 @@
-package event
+package messagequeen
 
 import (
 	"strconv"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 
-	"code.gitea.io/gitea/event/infrastructure/kafka"
 	"code.gitea.io/gitea/modules/context"
+	"code.gitea.io/gitea/modules/log"
+	"code.gitea.io/gitea/modules/messagequeen/infrastructure/kafka"
+	"code.gitea.io/gitea/modules/setting"
 )
 
 // Constants for topics, types, and field names.
 const (
-	topicGitClone  = "gitea_git_clone"
-	typGitClone    = "git_clone"
-	typWebDownload = "web_download"
+	typGitClone    = "gitClone"
+	typWebDownload = "webDownload"
 )
 
-type Detail struct {
+type msgDetail struct {
 	RepoName      string `json:"repo_name"`
 	RepoOwner     string `json:"repo_owner"`
 	DoerEmail     string `json:"doer_email"`
@@ -52,9 +52,9 @@ func prepareMessage(ctx *context.Context, messageType string, description string
 	doer, email := getUserInfo(ctx)
 
 	// Generate a new UUID for the request.
-	requestUuid := uuid.New().String()
+	RequestID := uuid.New().String()
 
-	detail := Detail{
+	detail := msgDetail{
 		RepoName:      ctx.Repo.Repository.Name,
 		RepoOwner:     ctx.Repo.Repository.OwnerName,
 		DoerEmail:     email,
@@ -64,7 +64,7 @@ func prepareMessage(ctx *context.Context, messageType string, description string
 		RequestAgent:  ctx.Req.UserAgent(),
 		RepoUserEmail: ctx.Repo.Repository.Owner.Email,
 		RequestPath:   ctx.Repo.RepoLink,
-		RequestID:     requestUuid,
+		RequestID:     RequestID,
 	}
 
 	return MsgNormal{
@@ -79,13 +79,13 @@ func prepareMessage(ctx *context.Context, messageType string, description string
 // GitCloneSender handles sending Git clone events to Kafka.
 func GitCloneSender(ctx *context.Context) error {
 	msg := prepareMessage(ctx, typGitClone, "this message means someone cloned the repository")
-	logrus.Infof("Publishing Git clone message: %#v\n", msg)
-	return kafka.Publish(topicGitClone, &msg, nil)
+	log.Info("Publishing Git clone message: %#v\n", msg)
+	return kafka.Publish(setting.MQ.TopicName, &msg, nil)
 }
 
 // WebDownloadSender handles sending Web download events to Kafka.
 func WebDownloadSender(ctx *context.Context) error {
 	msg := prepareMessage(ctx, typWebDownload, "this message means someone downloaded a file from the website")
-	logrus.Infof("Publishing Web download message: %#v\n", msg)
-	return kafka.Publish(topicGitClone, &msg, nil)
+	log.Info("Publishing Web download message: %#v\n", msg)
+	return kafka.Publish(setting.MQ.TopicName, &msg, nil)
 }

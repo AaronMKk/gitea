@@ -5,7 +5,6 @@ package web
 
 import (
 	gocontext "context"
-	chi_middleware "github.com/go-chi/chi/v5/middleware"
 	"net/http"
 	"strings"
 
@@ -52,6 +51,7 @@ import (
 
 	"gitea.com/go-chi/captcha"
 	"github.com/NYTimes/gziphandler"
+	chi_middleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus"
 )

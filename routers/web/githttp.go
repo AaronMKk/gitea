@@ -29,7 +29,10 @@ func requireSignIn(ctx *context.Context) {
 
 func gitHTTPRouters(m *web.Route) {
 	m.Group("", func() {
-		m.PostOptions("/git-upload-pack", middleware.GitCloneMessageMiddleware, repo.ServiceUploadPack)
+		m.Group("", func() {
+			m.PostOptions("/git-upload-pack", middleware.GitCloneMessageMiddleware, repo.ServiceUploadPack)
+		}, context.RepoAssignment)
+
 		m.PostOptions("/git-receive-pack", repo.ServiceReceivePack)
 		m.GetOptions("/info/refs", repo.GetInfoRefs)
 		m.GetOptions("/HEAD", repo.GetTextFile("HEAD"))
@@ -40,5 +43,5 @@ func gitHTTPRouters(m *web.Route) {
 		m.GetOptions("/objects/{head:[0-9a-f]{2}}/{hash:[0-9a-f]{38}}", repo.GetLooseObject)
 		m.GetOptions("/objects/pack/pack-{file:[0-9a-f]{40}}.pack", repo.GetPackFile)
 		m.GetOptions("/objects/pack/pack-{file:[0-9a-f]{40}}.idx", repo.GetIdxFile)
-	}, ignSignInAndCsrf, requireSignIn, repo.HTTPGitEnabledHandler, context.RepoAssignment, repo.CorsHandler(), context_service.UserAssignmentWeb())
+	}, ignSignInAndCsrf, requireSignIn, repo.HTTPGitEnabledHandler, repo.CorsHandler(), context_service.UserAssignmentWeb())
 }

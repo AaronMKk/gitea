@@ -15,10 +15,6 @@ type Config struct {
 	kfklib.Config
 }
 
-func init() {
-	RegisterMessageType(KafkaMessageType, newKafkaMessageQueue)
-}
-
 func retriveConfig(cfg MQConfig) Config {
 	kafkaAddr := cfg.ServerAddr
 	kafkaVer := cfg.ServerVersion
@@ -42,9 +38,5 @@ func retriveConfig(cfg MQConfig) Config {
 func newKafkaMessageQueue(cfg MQConfig) error {
 	var localConfig = retriveConfig(cfg)
 	mqLog := logrus.NewEntry(logrus.StandardLogger())
-	err := kfklib.Init(&localConfig.Config, mqLog, nil, queueName, true)
-	if err != nil {
-		return err
-	}
-	return nil
+	return kfklib.Init(&localConfig.Config, mqLog, nil, queueName, true)
 }
