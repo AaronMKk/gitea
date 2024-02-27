@@ -542,23 +542,23 @@ func MultiPartVerifyHandler(ctx *context.Context) {
 
 	contentStore := lfs_module.NewContentStore()
 	//check whether object exists
-	exists, err := contentStore.Exists(p)
+	//exists, err := contentStore.Exists(p)
 	if err != nil {
 		log.Error("lfs[multipart] unable to check if LFS OID[%s] exist. Error: %v", p.Oid, err)
 		writeStatus(ctx, http.StatusInternalServerError)
 		return
 	}
-	if exists {
-		accessible, err := git_model.LFSObjectAccessible(ctx, ctx.Doer, p.Oid)
-		if err != nil || !accessible {
-			log.Error("lfs[multipart] unable to check if LFS MetaObject [%s] is accessible. Error: %v", p.Oid, err)
-			writeStatus(ctx, http.StatusInternalServerError)
-			return
-		}
-		log.Error("lfs[multipart] LFS Object already exists", p.Oid)
-		writeStatus(ctx, http.StatusOK)
-		return
-	}
+	//if exists {
+	//	accessible, err := git_model.LFSObjectAccessible(ctx, ctx.Doer, p.Oid)
+	//	if err != nil || !accessible {
+	//		log.Error("lfs[multipart] unable to check if LFS MetaObject [%s] is accessible. Error: %v", p.Oid, err)
+	//		writeStatus(ctx, http.StatusInternalServerError)
+	//		return
+	//	}
+	//	log.Error("lfs[multipart] LFS Object already exists", p.Oid)
+	//	writeStatus(ctx, http.StatusOK)
+	//	return
+	//}
 	ok, err := contentStore.CommitAndVerify(p, string(parameter))
 	if err != nil {
 		log.Error("lfs[multipart] failed to commit and verify LFS object %v", err)
